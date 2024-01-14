@@ -7,15 +7,9 @@
         "rimraf": "^5.0.5",
         "syncpack": "^12.3.0"
     },
-    "lint-staged": {
-        "*.ts": "@biomejs/biome format --write",
-        "*.md": "prettier --write",
-        "package.json": [
-            "syncpack format",
-            "prettier --write"
-        ]
-    },
     "scripts": {
-        "prepare": "rimraf ./.husky && husky install && husky add .husky/pre-commit \"bun run lint-staged\""
+        "prepare": "npm run setup:rust && npm run setup:husky",
+        "setup:husky": "rimraf ./.husky && husky install && husky add .husky/pre-commit \"bun run lint-staged\"",
+        "setup:rust": "rustup component add rustfmt && rustup component add clippy"
     }
 }

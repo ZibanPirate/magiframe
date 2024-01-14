@@ -1,0 +1,8 @@
+{
+    "recommendations": [
+        "biomejs.biome",
+        "EditorConfig.EditorConfig",
+        "esbenp.prettier-vscode",
+        "Swellaby.rust-pack"
+    ]
+}
