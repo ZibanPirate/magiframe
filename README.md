@@ -1,2 +1,2 @@
 # magiframe
-a frame that is alive like the portraits at Hogwarts
+a frame (with a cheesy name) that is alive like the portraits at Hogwarts
