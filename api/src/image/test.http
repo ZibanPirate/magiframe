@@ -1,0 +1,4 @@
+@base_url = http://localhost:8080
+
+###
+GET {{base_url}}/image/random
