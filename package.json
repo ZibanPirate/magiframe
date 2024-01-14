@@ -1,13 +1,21 @@
 {
-  "dependencies": {},
-  "devDependencies": {
-    "@biomejs/biome": "1.5.1",
-    "lint-staged": "^15.2.0",
-    "prettier": "^3.2.2"
-  },
-  "lint-staged": {
-    "*.ts": "bunx @biomejs/biome format --write",
-    "*.json": "bunx @biomejs/biome format --write",
-    "*.md": "bunx prettier --write"
-  }
+    "devDependencies": {
+        "@biomejs/biome": "1.5.1",
+        "husky": "^8.0.3",
+        "lint-staged": "^15.2.0",
+        "prettier": "^3.2.2",
+        "rimraf": "^5.0.5",
+        "syncpack": "^12.3.0"
+    },
+    "lint-staged": {
+        "*.ts": "@biomejs/biome format --write",
+        "*.md": "prettier --write",
+        "package.json": [
+            "syncpack format",
+            "prettier --write"
+        ]
+    },
+    "scripts": {
+        "prepare": "rimraf ./.husky && husky install && husky add .husky/pre-commit \"bun run lint-staged\""
+    }
 }
