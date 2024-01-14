@@ -1,5 +1,6 @@
 mod _entry;
 mod _utils;
+mod image;
 
 #[tokio::main]
 async fn main() {
