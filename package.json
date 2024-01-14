@@ -1,6 +1,13 @@
 {
   "dependencies": {},
   "devDependencies": {
-    "@biomejs/biome": "1.5.1"
+    "@biomejs/biome": "1.5.1",
+    "lint-staged": "^15.2.0",
+    "prettier": "^3.2.2"
+  },
+  "lint-staged": {
+    "*.ts": "bunx @biomejs/biome format --write",
+    "*.json": "bunx @biomejs/biome format --write",
+    "*.md": "bunx prettier --write"
   }
 }
