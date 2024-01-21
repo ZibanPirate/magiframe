@@ -94,14 +94,15 @@ impl AIService {
         let x = (original_image.width() - cropped_width) / 2;
         let y = (original_image.height() - cropped_height) / 2;
         let original_image = original_image.crop_imm(x, y, cropped_width, cropped_height);
-        let _ = original_image.save("../0-original.png");
+        let _ = std::fs::create_dir("../ignore");
+        let _ = original_image.save("../ignore/0-original.png");
 
         let grayscale_image = original_image.to_luma8();
-        let _ = grayscale_image.save("../1-grayscale.png");
+        let _ = grayscale_image.save("../ignore/1-grayscale.png");
 
         let detection = canny(grayscale_image.clone(), 3.0, 0.08, 0.05);
         let first_detection = detection.as_image();
-        let _ = first_detection.save("../2-detection.png");
+        let _ = first_detection.save("../ignore/2-detection.png");
         let mut lines_detection =
             DynamicImage::new_luma8(grayscale_image.width(), grayscale_image.height());
 
@@ -110,11 +111,11 @@ impl AIService {
                 lines_detection.put_pixel(x, y, Rgba([255, 255, 255, 255]));
             }
         }
-        let _ = lines_detection.save("../3-lines_detection.png");
+        let _ = lines_detection.save("../ignore/3-lines_detection.png");
 
         let mut dither_image = grayscale_image.clone();
         dither(&mut dither_image, &image::imageops::colorops::BiLevel);
-        let _ = dither_image.save("../4-dither.png");
+        let _ = dither_image.save("../ignore/4-dither.png");
 
         Ok(dither_image)
     }
