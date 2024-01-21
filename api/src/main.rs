@@ -1,5 +1,7 @@
 mod _entry;
 mod _utils;
+mod ai;
+mod config;
 mod image;
 
 #[tokio::main]

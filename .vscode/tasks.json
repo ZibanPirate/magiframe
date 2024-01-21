@@ -15,7 +15,8 @@
             "problemMatcher": [],
             "options": { "cwd": "${workspaceFolder}/api" },
             "isBackground": true,
-            "presentation": { "group": "dev-api" }
+            "presentation": { "group": "dev-api" },
+            "dependsOn": [".env api"]
         },
         {
             "label": "dev",
