@@ -6,7 +6,6 @@ use image::ImageOutputFormat;
 use std::io::Cursor;
 
 pub async fn random(State(app_state): State<AppState>) -> impl IntoResponse {
-    let ai_service = &app_state.ai_service;
     // "a lone flower in hill looking down on a farm with animals, with light background"
     // "angry but cute elephant, with light background"
     // "flat 2d arabic and japaneses calligraphy art, with a light background"
@@ -14,7 +13,8 @@ pub async fn random(State(app_state): State<AppState>) -> impl IntoResponse {
     // "flat 2d maldives calligraphy art, with a light background"
     // "anime style, luffy vs doflamingo from one-piece, with light background"
     // "random cute cartoonish art, with light background"
-    let image = match ai_service
+    let image = match app_state
+        .image_service
         .generate_dithed_image(
             "random image, with light background which i can use for my wall frame".to_string(),
         )
