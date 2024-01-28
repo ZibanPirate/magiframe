@@ -1,5 +1,5 @@
 use super::error::AIServiceError;
-use crate::config::service::ConfigService;
+use crate::{config::service::ConfigService, image::_utils::r#const::IMAGE_DIMENSION};
 use image::DynamicImage;
 use serde::Deserialize;
 use std::{io::Cursor, sync::Arc};
@@ -76,7 +76,7 @@ impl AIService {
             Err(_) => return Err(AIServiceError::InternalError),
         };
 
-        let (cropped_width, cropped_height) = (480, 800);
+        let (cropped_width, cropped_height) = (IMAGE_DIMENSION.0, IMAGE_DIMENSION.1);
         let max_dimension = cropped_width.max(cropped_height);
         let original_image = match image::load(original_image_bytes_cursor, image::ImageFormat::Png)
         {
