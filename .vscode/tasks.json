@@ -2,6 +2,13 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "label": "bun install",
+            "type": "shell",
+            "command": "bun install",
+            "problemMatcher": [],
+            "options": { "cwd": "${workspaceFolder}" }
+        },
+        {
             "label": ".env api",
             "type": "shell",
             "command": "test -f .env || cp development.env .env",
@@ -16,7 +23,7 @@
             "options": { "cwd": "${workspaceFolder}/api" },
             "isBackground": true,
             "presentation": { "group": "dev-api" },
-            "dependsOn": [".env api"]
+            "dependsOn": ["bun install", ".env api"]
         },
         {
             "label": "dev",
