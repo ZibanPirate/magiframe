@@ -1,9 +1,15 @@
-use super::error::ImageServiceError;
-use crate::ai::service::AIService;
+use super::{_utils::lines::extract_lines_from_image, error::ImageServiceError};
+use crate::{
+    ai::service::AIService,
+    image::_utils::r#const::{CONTOUR_SIZE, IMAGE_DIMENSION},
+};
 use edge_detection::canny;
 use image::{
-    codecs::gif::GifEncoder, imageops::colorops::dither, DynamicImage, Frame, GenericImage,
-    GenericImageView, Rgba,
+    imageops::colorops::dither, DynamicImage, GenericImage, GenericImageView, ImageBuffer, Rgba,
+    RgbaImage,
+};
+use rayon::iter::{
+    IndexedParallelIterator, IntoParallelIterator, IntoParallelRefIterator, ParallelIterator,
 };
 use std::sync::Arc;
 
@@ -39,18 +45,22 @@ impl ImageService {
         Ok(dither_image)
     }
 
-    pub async fn redraw_image_in_gif(&self, image: &DynamicImage) -> Result<(), ImageServiceError> {
+    pub async fn redraw_image_in_gif(
+        &self,
+        original_image: &DynamicImage,
+    ) -> Result<(), ImageServiceError> {
         let _ = std::fs::create_dir("../ignore");
-        image
+        original_image
             .save("../ignore/0-original.png")
             .map_err(|_| ImageServiceError::InternalError)?;
 
-        let detection = canny(image.clone(), 3.0, 0.08, 0.05);
+        let detection = canny(original_image.clone(), 3.0, 0.08, 0.05);
         let first_detection = detection.as_image();
         first_detection
             .save("../ignore/2-detection.png")
             .map_err(|_| ImageServiceError::InternalError)?;
-        let mut lines_detection = DynamicImage::new_luma8(image.width(), image.height());
+        let mut lines_detection =
+            DynamicImage::new_luma8(original_image.width(), original_image.height());
 
         for (x, y, pixel) in first_detection.pixels() {
             if pixel[0] == 0 {
@@ -61,22 +71,110 @@ impl ImageService {
             .save("../ignore/3-lines_detection.png")
             .map_err(|_| ImageServiceError::InternalError)?;
 
-        let frames = vec![
-            image.to_rgba8(),
-            first_detection.to_rgba8(),
-            lines_detection.to_rgba8(),
-        ];
+        let mut frames: Vec<RgbaImage> = vec![];
 
-        let gif_output = std::fs::File::create("../ignore/5-animated.gif")
-            .map_err(|_| ImageServiceError::InternalError)?;
-        let mut gif_encoder = GifEncoder::new(gif_output);
+        let lines = extract_lines_from_image(&lines_detection);
+        println!("lines found: {}", lines.len());
 
-        for frame in frames {
-            let img_frame = Frame::new(frame);
-            gif_encoder
-                .encode_frame(img_frame.clone())
-                .map_err(|_| ImageServiceError::InternalError)?;
+        let one_big_line: Vec<(u32, u32)> = lines.iter().flatten().copied().collect();
+
+        const DURATION_IN_MS: usize = 10_000;
+        const FRAME_PER_SECOND: usize = 30;
+        const FRAMES: usize = DURATION_IN_MS / FRAME_PER_SECOND;
+
+        let points_per_frame = one_big_line.len() / FRAMES;
+
+        for i in 0..FRAMES {
+            let mut line_image = match frames.last() {
+                Some(frame) => DynamicImage::ImageRgba8(frame.clone()),
+                None => {
+                    let pixels = vec![255u8; (IMAGE_DIMENSION.0 * IMAGE_DIMENSION.1 * 3) as usize];
+
+                    let image = ImageBuffer::from_raw(IMAGE_DIMENSION.0, IMAGE_DIMENSION.1, pixels)
+                        .ok_or(ImageServiceError::InternalError)?;
+
+                    DynamicImage::ImageRgb8(image)
+                }
+            };
+
+            let start = (i * points_per_frame) as usize;
+            let end = ((i + 1) * points_per_frame) as usize;
+
+            let line = &one_big_line[start..end];
+
+            line.iter().for_each(|(x, y)| {
+                let x = x.saturating_sub(CONTOUR_SIZE / 2);
+                let y = y.saturating_sub(CONTOUR_SIZE / 2);
+
+                for i in 0..CONTOUR_SIZE {
+                    for j in 0..CONTOUR_SIZE {
+                        let current_x = x + i;
+                        let current_y = y + j;
+                        if current_x >= IMAGE_DIMENSION.0 || current_y >= IMAGE_DIMENSION.1 {
+                            continue;
+                        }
+                        line_image.put_pixel(
+                            current_x,
+                            current_y,
+                            original_image.get_pixel(current_x, current_y),
+                            // Rgba([0, 0, 0, 255]),
+                        );
+                    }
+                }
+            });
+
+            frames.push(line_image.to_rgba8());
+
+            // print progress every second
+            if i % (FRAME_PER_SECOND) == 0 {
+                println!("drawing {}%", i / (FRAMES / 100));
+            }
         }
+
+        println!("generating fade in");
+
+        let last_frame = frames.last().unwrap().clone();
+
+        // fade in original image
+        const FADE_IN_FRAMES: usize = FRAME_PER_SECOND;
+        let extra_frames = (0..FADE_IN_FRAMES)
+            .into_par_iter()
+            .map(|i| {
+                let mut image = original_image.clone();
+                for (x, y, pixel) in original_image.pixels() {
+                    let blend_factor = i as f32 / FADE_IN_FRAMES as f32;
+                    // blend last frame with original image
+                    let last_frame_pixel = last_frame.get_pixel(x, y);
+                    let new_pixel = Rgba([
+                        (pixel[0] as f32 * blend_factor
+                            + last_frame_pixel[0] as f32 * (1.0 - blend_factor))
+                            as u8,
+                        (pixel[1] as f32 * blend_factor
+                            + last_frame_pixel[1] as f32 * (1.0 - blend_factor))
+                            as u8,
+                        (pixel[2] as f32 * blend_factor
+                            + last_frame_pixel[2] as f32 * (1.0 - blend_factor))
+                            as u8,
+                        255,
+                    ]);
+                    image.put_pixel(x, y, new_pixel);
+                }
+
+                image.to_rgba8()
+            })
+            .collect::<Vec<RgbaImage>>();
+
+        // add extra frames to the end
+        frames.extend(extra_frames);
+
+        frames.par_iter().enumerate().for_each(|(i, frame)| {
+            frame
+                .save(format!("../ignore/ani/{}.png", i))
+                .map_err(|_| ImageServiceError::InternalError)
+                .unwrap();
+        });
+
+        println!("frames created ✅");
 
         Ok(())
     }
